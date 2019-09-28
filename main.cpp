@@ -1,14 +1,16 @@
-#include <windows.h>
+﻿#include <windows.h>
 #include <d3d9.h>
 #include <d3dx9.h>
 
 #define WINDOW_CLASS_NAME "MainWin"
 #define MAIN_WINDOW_TITLE "GameSubject"
 #define BACKGROUND_COLOR D3DCOLOR_XRGB(255, 0, 0)
-#define SCREEN_WIDTH 320
-#define SCREEN_HEIGHT 240
+#define SCREEN_WIDTH 800
+#define SCREEN_HEIGHT 600
+#define SCREEN_X GetSystemMetrics(SM_CXSCREEN)
+#define SCREEN_Y GetSystemMetrics(SM_CYSCREEN)
 
-#define MAX_FRAME_RATE 10
+#define MAX_FRAME_RATE 20
 
 
 LRESULT CALLBACK WinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -50,10 +52,10 @@ HWND CreateGameWindow(HINSTANCE hInstance, int nCmdShow, int ScreenWidth, int Sc
 			WINDOW_CLASS_NAME,
 			MAIN_WINDOW_TITLE,
 			WS_OVERLAPPEDWINDOW, // WS_EX_TOPMOST | WS_VISIBLE | WS_POPUP,
-			CW_USEDEFAULT,
-			CW_USEDEFAULT,
-			ScreenWidth,
-			ScreenHeight,
+			(SCREEN_X - SCREEN_WIDTH)/2,	//tọa độ x bắt đầu vẽ màn hình
+			(SCREEN_Y - SCREEN_HEIGHT)/2,	//tọa độ y bắt đầu vẽ màn hình
+			SCREEN_WIDTH,					//độ ngang của màn hình
+			SCREEN_HEIGHT,					//độ dọc của màn hình	
 			NULL,
 			NULL,
 			hInstance,
@@ -75,6 +77,7 @@ HWND CreateGameWindow(HINSTANCE hInstance, int nCmdShow, int ScreenWidth, int Sc
 //game loop
 int Run()
 {
+
 	MSG msg;
 	int done = 0;
 	DWORD frameStart = GetTickCount();
@@ -82,6 +85,8 @@ int Run()
 
 	while (!done)
 	{
+		//OutputDebugString("[WARNING] you in a loop infinity");
+		
 		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
 		{
 			if (msg.message == WM_QUIT) done = 1;
@@ -103,6 +108,7 @@ int Run()
 		}
 		else
 			Sleep(tickPerFrame - dt);
+		
 	}
 
 	return 1;
