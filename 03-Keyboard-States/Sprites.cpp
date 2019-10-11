@@ -22,6 +22,8 @@ CSprites *CSprites::GetInstance()
 
 void CSprite::Draw(float x, float y)
 {
+	this->x = x;
+	this->y = y;
 	CGame * game = CGame::GetInstance();
 	game->Draw(x, y, texture, left, top, right, bottom);
 }
@@ -42,7 +44,7 @@ LPSPRITE CSprites::Get(int id)
 void CAnimation::Add(int spriteId, DWORD time)
 {
 	int t = time;
-	if (time == 0) t=this->defaultTime;
+	if (time == 0) t = this->defaultTime;
 
 	LPSPRITE sprite = CSprites::GetInstance()->Get(spriteId);
 	LPANIMATION_FRAME frame = new CAnimationFrame(sprite, t);
@@ -52,9 +54,9 @@ void CAnimation::Add(int spriteId, DWORD time)
 void CAnimation::Render(float x, float y)
 {
 	DWORD now = GetTickCount();
-	if (currentFrame == -1) 
+	if (currentFrame == -1)
 	{
-		currentFrame = 0; 
+		currentFrame = 0;
 		lastFrameTime = now;
 	}
 	else
@@ -67,7 +69,7 @@ void CAnimation::Render(float x, float y)
 			if (currentFrame == frames.size()) currentFrame = 0;
 			//DebugOut(L"now: %d, lastFrameTime: %d, t: %d\n", now, lastFrameTime, t);
 		}
-		
+
 	}
 
 	frames[currentFrame]->GetSprite()->Draw(x, y);

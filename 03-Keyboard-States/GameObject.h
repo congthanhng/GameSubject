@@ -13,19 +13,19 @@ class CGameObject
 {
 protected:
 
-	float x; 
+	float x;
 	float y;
 
 	float vx;
 	float vy;
 
-	int nx;	 
+	int nx;
 
-	int state;									
+	int state;
 
 	static vector<LPANIMATION> animations;
 
-public: 
+public:
 	void SetPosition(float x, float y) { this->x = x, this->y = y; }
 	void SetSpeed(float vx, float vy) { this->vx = vx, this->vy = vy; }
 

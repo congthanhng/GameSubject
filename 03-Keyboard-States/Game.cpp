@@ -3,17 +3,11 @@
 
 CGame * CGame::__instance = NULL;
 
-/*
-	Initialize DirectX, create a Direct3D device for rendering within the window, initial Sprite library for 
-	rendering 2D images
-	- hInst: Application instance handle
-	- hWnd: Application window handle
-*/
 void CGame::Init(HWND hWnd)
 {
 	LPDIRECT3D9 d3d = Direct3DCreate9(D3D_SDK_VERSION);
 
-	this->hWnd = hWnd;									
+	this->hWnd = hWnd;
 
 	D3DPRESENT_PARAMETERS d3dpp;
 
@@ -25,7 +19,7 @@ void CGame::Init(HWND hWnd)
 	d3dpp.BackBufferCount = 1;
 
 	RECT r;
-	GetClientRect(hWnd, &r);	// retrieve Window width & height 
+	GetClientRect(hWnd, &r);
 
 	d3dpp.BackBufferHeight = r.bottom + 1;
 	d3dpp.BackBufferWidth = r.right + 1;
@@ -46,19 +40,15 @@ void CGame::Init(HWND hWnd)
 
 	d3ddv->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backBuffer);
 
-	// Initialize sprite helper from Direct3DX helper library
 	D3DXCreateSprite(d3ddv, &spriteHandler);
 
 	OutputDebugString(L"[INFO] InitGame done;\n");
 }
 
-/*
-	Utility function to wrap LPD3DXSPRITE::Draw 
-*/
 void CGame::Draw(float x, float y, LPDIRECT3DTEXTURE9 texture, int left, int top, int right, int bottom)
 {
 	D3DXVECTOR3 p(x, y, 0);
-	RECT r; 
+	RECT r;
 	r.left = left;
 	r.top = top;
 	r.right = right;
@@ -71,12 +61,17 @@ int CGame::IsKeyDown(int KeyCode)
 	return (keyStates[KeyCode] & 0x80) > 0;
 }
 
-void CGame::InitKeyboard(LPKEYEVENTHANDLER handler)
+bool CGame::IsMouseDown(int KeyCode)
+{
+	return (mouse_state.rgbButtons[KeyCode] & 0x80);
+}
+
+void CGame::InitInput(LPKEYEVENTHANDLER keyHandler, LPMOUSEEVENTHANDLER mouseHandler)
 {
 	HRESULT
 		hr = DirectInput8Create
 		(
-			(HINSTANCE)GetWindowLong(hWnd, GWL_HINSTANCE),
+		(HINSTANCE)GetWindowLong(hWnd, GWL_HINSTANCE),
 			DIRECTINPUT_VERSION,
 			IID_IDirectInput8, (VOID**)&di, NULL
 		);
@@ -87,73 +82,83 @@ void CGame::InitKeyboard(LPKEYEVENTHANDLER handler)
 		return;
 	}
 
-	hr = di->CreateDevice(GUID_SysKeyboard, &didv, NULL);
+	hr = di->CreateDevice(GUID_SysKeyboard, &keyboard, NULL);
 
-	// TO-DO: put in exception handling
-	if (hr != DI_OK) 
+	if (hr != DI_OK)
 	{
 		DebugOut(L"[ERROR] CreateDevice failed!\n");
 		return;
 	}
 
-	// Set the data format to "keyboard format" - a predefined data format 
-	//
-	// A data format specifies which controls on a device we
-	// are interested in, and how they should be reported.
-	//
-	// This tells DirectInput that we will be passing an array
-	// of 256 bytes to IDirectInputDevice::GetDeviceState.
+	hr = keyboard->SetDataFormat(&c_dfDIKeyboard);
 
-	hr = didv->SetDataFormat(&c_dfDIKeyboard);
+	hr = keyboard->SetCooperativeLevel(hWnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
 
-	hr = didv->SetCooperativeLevel(hWnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
-
-
-	// IMPORTANT STEP TO USE BUFFERED DEVICE DATA!
-	//
-	// DirectInput uses unbuffered I/O (buffer size = 0) by default.
-	// If you want to read buffered data, you need to set a nonzero
-	// buffer size.
-	//
-	// Set the buffer size to DINPUT_BUFFERSIZE (defined above) elements.
-	//
-	// The buffer size is a DWORD property associated with the device.
 	DIPROPDWORD dipdw;
 
 	dipdw.diph.dwSize = sizeof(DIPROPDWORD);
 	dipdw.diph.dwHeaderSize = sizeof(DIPROPHEADER);
 	dipdw.diph.dwObj = 0;
 	dipdw.diph.dwHow = DIPH_DEVICE;
-	dipdw.dwData = KEYBOARD_BUFFER_SIZE; // Arbitary buffer size
+	dipdw.dwData = KEYBOARD_BUFFER_SIZE;
 
-	hr = didv->SetProperty(DIPROP_BUFFERSIZE, &dipdw.diph);
+	hr = keyboard->SetProperty(DIPROP_BUFFERSIZE, &dipdw.diph);
 
-	hr = didv->Acquire();
+	hr = keyboard->Acquire();
 	if (hr != DI_OK)
 	{
 		DebugOut(L"[ERROR] DINPUT8::Acquire failed!\n");
 		return;
 	}
 
-	this->keyHandler = handler;
-
+	this->keyHandler = keyHandler;
 	DebugOut(L"[INFO] Keyboard has been initialized successfully\n");
+
+	hr = di->CreateDevice(GUID_SysMouse, &mouse, NULL);
+
+	if (hr != DI_OK)
+	{
+		DebugOut(L"[ERROR] CreateDevice failed!\n");
+		return;
+	}
+
+	hr = mouse->SetDataFormat(&c_dfDIMouse);
+
+	if (hr != DI_OK)
+	{
+		DebugOut(L"[ERROR] SetDataFormat failed!\n");
+		return;
+	}
+
+	hr = mouse->SetCooperativeLevel(hWnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
+
+	if (hr != DI_OK)
+	{
+		DebugOut(L"[ERROR] SetCooperativeLevel failed!\n");
+		return;
+	}
+
+	hr = mouse->Acquire();
+	if (hr != DI_OK)
+	{
+		DebugOut(L"[ERROR] DINPUT8::Acquire failed!\n");
+		return;
+	}
+	this->mouseHandler = mouseHandler;
+	DebugOut(L"[INFO] Mouse has been initialized successfully\n");
 }
 
 void CGame::ProcessKeyboard()
 {
-	HRESULT hr; 
-
-	// Collect all key states first
-	hr = didv->GetDeviceState(sizeof(keyStates), keyStates);
+	HRESULT hr;
+	hr = keyboard->GetDeviceState(sizeof(keyStates), keyStates);
 	if (FAILED(hr))
 	{
-		// If the keyboard lost focus or was not acquired then try to get control back.
 		if ((hr == DIERR_INPUTLOST) || (hr == DIERR_NOTACQUIRED))
 		{
-			HRESULT h = didv->Acquire();
-			if (h==DI_OK)
-			{ 
+			HRESULT h = keyboard->Acquire();
+			if (h == DI_OK)
+			{
 				DebugOut(L"[INFO] Keyboard re-acquired!\n");
 			}
 			else return;
@@ -167,18 +172,14 @@ void CGame::ProcessKeyboard()
 
 	keyHandler->KeyState((BYTE *)&keyStates);
 
-
-
-	// Collect all buffered events
 	DWORD dwElements = KEYBOARD_BUFFER_SIZE;
-	hr = didv->GetDeviceData(sizeof(DIDEVICEOBJECTDATA), keyEvents, &dwElements, 0);
+	hr = keyboard->GetDeviceData(sizeof(DIDEVICEOBJECTDATA), keyEvents, &dwElements, 0);
 	if (FAILED(hr))
 	{
 		//DebugOut(L"[ERROR] DINPUT::GetDeviceData failed. Error: %d\n", hr);
 		return;
 	}
 
-	// Scan through all buffered events, check if the key is pressed or released
 	for (DWORD i = 0; i < dwElements; i++)
 	{
 		int KeyCode = keyEvents[i].dwOfs;
@@ -188,6 +189,41 @@ void CGame::ProcessKeyboard()
 		else
 			keyHandler->OnKeyUp(KeyCode);
 	}
+}
+
+void CGame::ProcessMouse()
+{
+	HRESULT hr;
+	hr = mouse->GetDeviceState(sizeof(mouse_state), &mouse_state);
+	if (FAILED(hr))
+	{
+		if ((hr == DIERR_INPUTLOST) || (hr == DIERR_NOTACQUIRED))
+		{
+			HRESULT h = mouse->Acquire();
+			if (h == DI_OK)
+			{
+				DebugOut(L"[INFO] Mouse re-acquired!\n");
+			}
+			else return;
+		}
+		else
+		{
+			//DebugOut(L"[ERROR] DINPUT::GetDeviceState failed. Error: %d\n", hr);
+			return;
+		}
+	}
+	for (int i = 0; i < 4; i++)
+	{
+		if (IsMouseDown(i))
+		{
+			mouseHandler->OnKeyDown(i);
+		}
+		else
+		{
+			mouseHandler->OnKeyUp(i);
+		}
+	}
+	mouseHandler->SetCurrentPos(mouse_state.lX, mouse_state.lY, mouse_state.lZ);
 }
 
 CGame::~CGame()

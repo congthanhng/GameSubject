@@ -54,7 +54,7 @@ LRESULT CALLBACK WinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 void LoadResources()
 {
 	mario = new CMario(MARIO_TEXTURE_PATH);
-	mario->SetPosition(20.0f, 130.0f);
+	mario->SetPosition(0,0);
 
 	brick = new CGameObject(BRICK_TEXTURE_PATH);
 	brick->SetPosition(10.0f, 100.0f);

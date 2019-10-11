@@ -11,13 +11,13 @@ CGameObject::CGameObject()
 {
 	x = y = 0;
 	vx = vy = 0;
-	nx = 1;	
+	nx = 1;
 }
 
 void CGameObject::Update(DWORD dt)
 {
-	x += vx*dt;
-	y += vy*dt;
+	x += vx * dt;
+	y += vy * dt;
 }
 
 void CGameObject::Render()

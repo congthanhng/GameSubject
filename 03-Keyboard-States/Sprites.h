@@ -7,18 +7,23 @@ using namespace std;
 
 class CSprite
 {
-	int id;				// Sprite ID in the sprite database
+	int id;
 
-	int left; 
+	int left;
 	int top;
 	int right;
 	int bottom;
 
+	float x;
+	float y;
+
 	LPDIRECT3DTEXTURE9 texture;
-public: 
+public:
 	CSprite(int id, int left, int top, int right, int bottom, LPDIRECT3DTEXTURE9 tex);
 
 	void Draw(float x, float y);
+	float GetX() { return this->x; }
+	float GetY() { return this->y; }
 };
 
 typedef CSprite * LPSPRITE;

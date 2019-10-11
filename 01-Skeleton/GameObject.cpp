@@ -61,8 +61,8 @@ CGameObject::~CGameObject()
 void CMario::Update(DWORD dt)
 {
 	//x += 0.1f*dt;
-	if (x < 280) x += 5;
-	else if (x >= 280 && y<200) y += 5;
-	else if (x <= 280 && y >= 200) x -= 5;
-	else y -= 5;
+	if (x < 290 && y==0) x += 5;
+	else if (x >= 290 && y<210) y += 5;
+	else if (x>=10&&x<= 290 && y == 210) x -= 5;
+	else  y -= 5;
 }

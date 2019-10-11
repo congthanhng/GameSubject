@@ -1,14 +1,3 @@
-/* =============================================================
-	INTRODUCTION TO GAME PROGRAMMING SE102
-	
-	SAMPLE 03 - KEYBOARD AND OBJECT STATE
-
-	This sample illustrates how to:
-
-		1/ Process keyboard input
-		2/ Control object state with keyboard events
-================================================================ */
-
 #include <windows.h>
 #include <d3d9.h>
 #include <d3dx9.h>
@@ -18,32 +7,35 @@
 #include "GameObject.h"
 #include "Textures.h"
 
-#include "Mario.h"
+#define WINDOW_CLASS_NAME L"GameWindow"
+#define MAIN_WINDOW_TITLE L"BTT2"
 
-#define WINDOW_CLASS_NAME L"SampleWindow"
-#define MAIN_WINDOW_TITLE L"02 - Sprite animation"
+#define BACKGROUND_COLOR D3DCOLOR_XRGB(0, 0, 0)
+#define SCREEN_WIDTH 800
+#define SCREEN_HEIGHT 480
 
-#define BACKGROUND_COLOR D3DCOLOR_XRGB(200, 200, 255)
-#define SCREEN_WIDTH 320
-#define SCREEN_HEIGHT 240
-
-#define MAX_FRAME_RATE 90
-
-#define ID_TEX_MARIO 0
-#define ID_TEX_ENEMY 10
-#define ID_TEX_MISC 20
+#define MAX_FRAME_RATE 60
 
 CGame *game;
-CMario *mario;
+CSprite* sLeft;
+CSprite* sRight;
+CSprite* sBall;
 
-class CSampleKeyHander: public CKeyEventHandler
+int run = 0;
+float v = 0.5;
+bool up = false;
+bool down = false;
+LONG x = 0;
+LONG y = 0;
+
+class CSampleKeyHander : public CKeyEventHandler
 {
 	virtual void KeyState(BYTE *states);
 	virtual void OnKeyDown(int KeyCode);
 	virtual void OnKeyUp(int KeyCode);
 };
 
-CSampleKeyHander * keyHandler; 
+CSampleKeyHander * keyHandler;
 
 void CSampleKeyHander::OnKeyDown(int KeyCode)
 {
@@ -51,7 +43,7 @@ void CSampleKeyHander::OnKeyDown(int KeyCode)
 	switch (KeyCode)
 	{
 	case DIK_SPACE:
-		mario->SetState(MARIO_STATE_JUMP);
+		run = 1;
 		break;
 	}
 }
@@ -61,13 +53,54 @@ void CSampleKeyHander::OnKeyUp(int KeyCode)
 	DebugOut(L"[INFO] KeyUp: %d\n", KeyCode);
 }
 
-void CSampleKeyHander::KeyState(BYTE *states)
+void CSampleKeyHander::KeyState(BYTE* states)
 {
-	if (game->IsKeyDown(DIK_RIGHT))
-		mario->SetState(MARIO_STATE_WALKING_RIGHT);
-	else if (game->IsKeyDown(DIK_LEFT))
-		mario->SetState(MARIO_STATE_WALKING_LEFT);
-	else mario->SetState(MARIO_STATE_IDLE);
+	if (game->IsKeyDown(DIK_UP))
+	{
+		up = true;
+	}
+	else
+	{
+		up = false;
+	}
+	if (game->IsKeyDown(DIK_DOWN))
+	{
+		down = true;
+	}
+	else
+	{
+		down = false;
+	}
+}
+
+class CSampleMouseHander : public CMouseEventHandler
+{
+	virtual void KeyState(BYTE* states);
+	virtual void OnKeyDown(int KeyCode);
+	virtual void OnKeyUp(int KeyCode);
+};
+
+CSampleMouseHander* mouseHandler;
+
+void CSampleMouseHander::OnKeyDown(int KeyCode)
+{
+	DebugOut(L"[INFO] KeyDown: %d\n", KeyCode);
+	switch (KeyCode)
+	{
+	case 0:
+		run = 1;
+		break;
+	}
+}
+
+void CSampleMouseHander::OnKeyUp(int KeyCode)
+{
+	DebugOut(L"[INFO] KeyUp: %d\n", KeyCode);
+}
+
+void CSampleMouseHander::KeyState(BYTE* states)
+{
+
 }
 
 LRESULT CALLBACK WinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -83,77 +116,91 @@ LRESULT CALLBACK WinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-/*
-	Load all game resources 
-	In this example: load textures, sprites, animations and mario object
-*/
+float BallX;
+float BallY;
+float LeftX;
+float LeftY;
+float RightX;
+float RightY;
+float vx;
+float vy;
+
 void LoadResources()
 {
-	CTextures * textures = CTextures::GetInstance();
+	CTextures* textures = CTextures::GetInstance();
 
-	textures->Add(ID_TEX_MARIO, L"textures\\mario.png",D3DCOLOR_XRGB(176, 224, 248));
+	textures->Add(1, L"Bong.png", D3DCOLOR_XRGB(0, 0, 0));
+	LPDIRECT3DTEXTURE9 texPong = textures->Get(1);
 
-	CSprites * sprites = CSprites::GetInstance();
-	CAnimations * animations = CAnimations::GetInstance();
-	
-	LPDIRECT3DTEXTURE9 texMario = textures->Get(ID_TEX_MARIO);
+	sLeft = new CSprite(0, 14, 14, 30, 105, texPong);
+	sRight = new CSprite(0, 14, 14, 30, 105, texPong);
+	sBall = new CSprite(2, 64, 64, 88, 88, texPong);
 
-
-	sprites->Add(10001, 246, 154, 260, 181, texMario);
-
-	sprites->Add(10002, 275, 154, 290, 181, texMario);
-	sprites->Add(10003, 304, 154, 321, 181, texMario);
-
-	sprites->Add(10011, 186, 154, 200, 181, texMario);
-
-	sprites->Add(10012, 155, 154, 170, 181, texMario);
-	sprites->Add(10013, 125, 154, 140, 181, texMario);
-
-
-	LPANIMATION ani;
-
-	ani = new CAnimation(100);	
-	ani->Add(10001);
-	animations->Add(400, ani);
-
-	ani = new CAnimation(100);
-	ani->Add(10011);
-	animations->Add(401, ani);
-
-
-	ani = new CAnimation(100);
-	ani->Add(10001);
-	ani->Add(10002);
-	ani->Add(10003);
-	animations->Add(500, ani);
-
-	ani = new CAnimation(100);
-	ani->Add(10011);
-	ani->Add(10012);
-	ani->Add(10013);
-	animations->Add(501, ani);
-
-	mario = new CMario();
-	CMario::AddAnimation(400);		// idle right
-	CMario::AddAnimation(401);		// idle left
-	CMario::AddAnimation(500);		// walk right
-	CMario::AddAnimation(501);		// walk left
-
-	mario->SetPosition(0.0f, 100.0f);
+	BallX = 395;
+	BallY = 190;
+	LeftX = 0;
+	LeftY = 150;
+	RightX = 770;
+	RightY = 150;
+	vx = 0.2;
+	vy = -0.2;
 }
 
 /*
 	Update world status for this frame
 	dt: time period between beginning of last frame and beginning of this frame
 */
+
 void Update(DWORD dt)
 {
-	mario->Update(dt);
+	BallX += vx * dt * run;
+	BallY += vy * dt * run;
+	if (BallX + 24 > 782)
+	{
+		run = 0;
+	}
+
+	if (BallX < 0)
+	{
+		run = 0;
+	}
+
+	if (BallY + 24 > 438)
+	{
+		vy = -vy;
+	}
+	if (BallY < 0)
+	{
+		vy = -vy;
+	}
+	if ((BallX < sLeft->GetX() + 18) && (BallY > sLeft->GetY()) && (BallY < sLeft->GetY() + 95))
+	{
+		vx = -vx;
+	}
+	if ((BallX + 28 > sRight->GetX()) && (BallY > sRight->GetY()) && (BallY < sRight->GetY() + 95))
+	{
+		vx = -vx;
+	}
+	if (up && LeftY > 0)
+	{
+		LeftY -= v * dt;
+	}
+	if (down && LeftY < 440 - 91)
+	{
+		LeftY += v * dt;
+	}
+
+	RightY += y;
+	if (RightY < 0)
+	{
+		RightY = 0;
+	}
+	if (RightY > 440 - 91)
+	{
+		RightY = 440 - 91;
+	}
 }
 
-/*
-	Render a frame 
-*/
 void Render()
 {
 	LPDIRECT3DDEVICE9 d3ddv = game->GetDirect3DDevice();
@@ -167,7 +214,9 @@ void Render()
 
 		spriteHandler->Begin(D3DXSPRITE_ALPHABLEND);
 
-		mario->Render();
+		sLeft->Draw(LeftX, LeftY);
+		sRight->Draw(RightX, RightY);
+		sBall->Draw(BallX, BallY);
 
 		spriteHandler->End();
 		d3ddv->EndScene();
@@ -201,7 +250,7 @@ HWND CreateGameWindow(HINSTANCE hInstance, int nCmdShow, int ScreenWidth, int Sc
 		CreateWindow(
 			WINDOW_CLASS_NAME,
 			MAIN_WINDOW_TITLE,
-			WS_OVERLAPPEDWINDOW, // WS_EX_TOPMOST | WS_VISIBLE | WS_POPUP,
+			WS_OVERLAPPEDWINDOW,
 			CW_USEDEFAULT,
 			CW_USEDEFAULT,
 			ScreenWidth,
@@ -211,7 +260,7 @@ HWND CreateGameWindow(HINSTANCE hInstance, int nCmdShow, int ScreenWidth, int Sc
 			hInstance,
 			NULL);
 
-	if (!hWnd) 
+	if (!hWnd)
 	{
 		OutputDebugString(L"[ERROR] CreateWindow failed");
 		DWORD ErrCode = GetLastError();
@@ -243,8 +292,6 @@ int Run()
 
 		DWORD now = GetTickCount();
 
-		// dt: the time between (beginning of last frame) and now
-		// this frame: the frame we are about to render
 		DWORD dt = now - frameStart;
 
 		if (dt >= tickPerFrame)
@@ -252,12 +299,13 @@ int Run()
 			frameStart = now;
 
 			game->ProcessKeyboard();
-			
+			game->ProcessMouse();
+			y = mouseHandler->GetY();
 			Update(dt);
 			Render();
 		}
 		else
-			Sleep(tickPerFrame - dt);	
+			Sleep(tickPerFrame - dt);
 	}
 
 	return 1;
@@ -271,7 +319,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	game->Init(hWnd);
 
 	keyHandler = new CSampleKeyHander();
-	game->InitKeyboard(keyHandler);
+	mouseHandler = new CSampleMouseHander();
+	game->InitInput(keyHandler, mouseHandler);
 
 
 	LoadResources();
