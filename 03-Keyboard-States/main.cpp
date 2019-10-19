@@ -9,7 +9,7 @@
 #include <time.h>
 
 #define WINDOW_CLASS_NAME L"GameWindow"
-#define MAIN_WINDOW_TITLE L"02"
+#define MAIN_WINDOW_TITLE L"BTT3"
 
 #define BACKGROUND_COLOR D3DCOLOR_XRGB(0, 0, 0)
 #define SURFACE_COLOR D3DCOLOR_XRGB(255, 255, 255)
@@ -152,7 +152,7 @@ void LoadResources()
 {
 	CTextures* textures = CTextures::GetInstance();
 
-	textures->Add(1, L"Pong.png", D3DCOLOR_XRGB(0, 0, 0));
+	textures->Add(1, L"Bong.png", D3DCOLOR_XRGB(0, 0, 0));
 
 	LPDIRECT3DTEXTURE9 texPong = textures->Get(1);
 
