@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <Windows.h>
 #include <d3d9.h>
 #include <d3dx9.h>
@@ -11,7 +11,7 @@
 class CKeyEventHandler
 {
 public:
-	virtual void KeyState(BYTE *state) = 0;
+	virtual void KeyState(BYTE *state) = 0; // lưu nhiều phím
 	virtual void OnKeyDown(int KeyCode) = 0;
 	virtual void OnKeyUp(int KeyCode) = 0;
 };
@@ -38,19 +38,19 @@ typedef CMouseEventHandler* LPMOUSEEVENTHANDLER;
 class CGame
 {
 	static CGame * __instance;
-	HWND hWnd;
+	HWND hWnd; //quản lý cửa sổ
 
 	LPDIRECT3D9 d3d = NULL;
-	LPDIRECT3DDEVICE9 d3ddv = NULL;
+	LPDIRECT3DDEVICE9 d3ddv = NULL; //quản lý card
 
-	LPDIRECT3DSURFACE9 backBuffer = NULL;
+	LPDIRECT3DSURFACE9 backBuffer = NULL;		//tạo buffer
 	LPD3DXSPRITE spriteHandler = NULL;
 
 	LPDIRECTINPUT8       di;
 	LPDIRECTINPUTDEVICE8 keyboard;
 	LPDIRECTINPUTDEVICE8 mouse;
 
-	BYTE  keyStates[256];
+	BYTE  keyStates[256];//sll bàn phím
 	DIMOUSESTATE mouse_state;
 
 	DIDEVICEOBJECTDATA keyEvents[KEYBOARD_BUFFER_SIZE];

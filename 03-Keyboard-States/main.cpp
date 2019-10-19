@@ -1,4 +1,4 @@
-#include <windows.h>
+﻿#include <windows.h>
 #include <d3d9.h>
 #include <d3dx9.h>
 
@@ -6,13 +6,19 @@
 #include "Game.h"
 #include "GameObject.h"
 #include "Textures.h"
+#include <time.h>
 
 #define WINDOW_CLASS_NAME L"GameWindow"
-#define MAIN_WINDOW_TITLE L"BTT2"
+#define MAIN_WINDOW_TITLE L"02"
 
 #define BACKGROUND_COLOR D3DCOLOR_XRGB(0, 0, 0)
+#define SURFACE_COLOR D3DCOLOR_XRGB(255, 255, 255)
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 480
+#define MAX_X 785
+#define MAX_Y 440
+#define SURFACE_HEIGHT 0
+
 
 #define MAX_FRAME_RATE 60
 
@@ -21,12 +27,35 @@ CSprite* sLeft;
 CSprite* sRight;
 CSprite* sBall;
 
+
+LPDIRECT3DSURFACE9 surface = NULL;
+
 int run = 0;
+bool isEnd = false;
 float v = 0.5;
 bool up = false;
 bool down = false;
 LONG x = 0;
 LONG y = 0;
+
+float BallX;
+float BallY;
+float LeftX;
+float LeftY;
+float RightX;
+float RightY;
+float vx;
+float vy;
+
+void StartGame()
+{
+	if (run == 0 && isEnd == false)
+	{
+		run = 1;
+		BallY = SURFACE_HEIGHT + 200 + rand() % (MAX_Y - 400 - SURFACE_HEIGHT + 1) - 12;
+		BallX = MAX_X / 2;
+	}
+}
 
 class CSampleKeyHander : public CKeyEventHandler
 {
@@ -43,7 +72,10 @@ void CSampleKeyHander::OnKeyDown(int KeyCode)
 	switch (KeyCode)
 	{
 	case DIK_SPACE:
-		run = 1;
+		StartGame();
+		break;
+	case DIK_ESCAPE:
+		PostQuitMessage(0);
 		break;
 	}
 }
@@ -88,7 +120,7 @@ void CSampleMouseHander::OnKeyDown(int KeyCode)
 	switch (KeyCode)
 	{
 	case 0:
-		run = 1;
+		StartGame();
 		break;
 	}
 }
@@ -116,90 +148,287 @@ LRESULT CALLBACK WinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-float BallX;
-float BallY;
-float LeftX;
-float LeftY;
-float RightX;
-float RightY;
-float vx;
-float vy;
-
 void LoadResources()
 {
 	CTextures* textures = CTextures::GetInstance();
 
-	textures->Add(1, L"Bong.png", D3DCOLOR_XRGB(0, 0, 0));
+	textures->Add(1, L"Pong.png", D3DCOLOR_XRGB(0, 0, 0));
+
 	LPDIRECT3DTEXTURE9 texPong = textures->Get(1);
 
 	sLeft = new CSprite(0, 14, 14, 30, 105, texPong);
 	sRight = new CSprite(0, 14, 14, 30, 105, texPong);
 	sBall = new CSprite(2, 64, 64, 88, 88, texPong);
 
-	BallX = 395;
-	BallY = 190;
+	BallX = MAX_X / 2;
+	BallY = MAX_Y / 2;
 	LeftX = 0;
-	LeftY = 150;
-	RightX = 770;
-	RightY = 150;
-	vx = 0.2;
-	vy = -0.2;
+	LeftY = SURFACE_HEIGHT;
+	RightX = MAX_X - 17;
+	RightY = SURFACE_HEIGHT;
+	srand(time(NULL));
+	if (rand() % 2 == 0)
+	{
+		vx = 0.2;
+	}
+	else
+	{
+		vx = -0.2;
+	}
+	if (rand() % 2 == 0)
+	{
+		vy = 0.2;
+	}
+	else
+	{
+		vy = -0.2;
+	}
 }
 
-/*
-	Update world status for this frame
-	dt: time period between beginning of last frame and beginning of this frame
-*/
+
+void SweptAABB(
+	float ml, float mt, float mr, float mb,
+	float dx, float dy,
+	float sl, float st, float sr, float sb,
+	float& t, float& nx, float& ny)
+{
+	float dx_entry, dx_exit, tx_entry, tx_exit;
+	float dy_entry, dy_exit, ty_entry, ty_exit;
+
+	float t_entry;
+	float t_exit;
+
+	t = -1;
+	nx = ny = 0;
+
+	if (dx == 0 && dy == 0) return;
+
+	if (dx > 0)
+	{
+		dx_entry = sl - mr;
+		dx_exit = sr - ml;
+	}
+	else if (dx < 0) {
+		dx_entry = sr - ml;
+		dx_exit = sl - mr;
+	}
+
+	if (dy > 0)
+	{
+		dy_entry = st - mb;
+		dy_exit = sb - mt;
+	}
+	else if (dy < 0)
+	{
+		dy_entry = sb - mt;
+		dy_exit = st - mb;
+	}
+
+	if (dx == 0)
+	{
+		tx_entry = -99999999999;
+		tx_exit = 99999999999;
+	}
+	else
+	{
+		tx_entry = dx_entry / dx;
+		tx_exit = dx_exit / dx;
+	}
+
+	if (dy == 0)
+	{
+		ty_entry = -99999999999;
+		ty_exit = 99999999999;
+	}
+	else
+	{
+		ty_entry = dy_entry / dy;
+		ty_exit = dy_exit / dy;
+	}
+
+	if ((tx_entry < 0 && ty_entry < 0) || tx_entry > 1 || ty_entry > 1) return;
+
+	t_entry = max(tx_entry, ty_entry);
+	t_exit = max(tx_exit, ty_exit);
+
+	if (t_entry > t_exit) return;
+
+	t = t_entry;
+
+	if (tx_entry > ty_entry)
+	{
+		ny = 0;
+		dx > 0 ? nx = -1 : nx = 1;
+	}
+	else
+	{
+		nx = 0;
+		dy > 0 ? ny = -1 : ny = 1;
+	}
+}
+
+struct Box
+{
+	float l, t, r, b;
+};
+
+void CreateBox(Box& box, float x, float y, float width, float height, float dx, float dy)
+{
+	if (dx > 0)
+	{
+		box.l = x;
+		box.r = x + dx + width;
+	}
+	else
+	{
+		box.l = x + dx;
+		box.r = x + width;
+	}
+	if (dy > 0)
+	{
+		box.t = y;
+		box.b = y + dy + height;
+	}
+	else
+	{
+		box.t = y + dy;
+		box.b = y + height;
+	}
+}
 
 void Update(DWORD dt)
 {
-	BallX += vx * dt * run;
-	BallY += vy * dt * run;
-	if (BallX + 24 > 782)
-	{
-		run = 0;
-	}
-
-	if (BallX < 0)
-	{
-		run = 0;
-	}
-
-	if (BallY + 24 > 438)
-	{
-		vy = -vy;
-	}
-	if (BallY < 0)
-	{
-		vy = -vy;
-	}
-	if ((BallX < sLeft->GetX() + 18) && (BallY > sLeft->GetY()) && (BallY < sLeft->GetY() + 95))
-	{
-		vx = -vx;
-	}
-	if ((BallX + 28 > sRight->GetX()) && (BallY > sRight->GetY()) && (BallY < sRight->GetY() + 95))
-	{
-		vx = -vx;
-	}
-	if (up && LeftY > 0)
+	if (up && LeftY > SURFACE_HEIGHT)
 	{
 		LeftY -= v * dt;
+		if (LeftY < SURFACE_HEIGHT)
+		{
+			LeftY = SURFACE_HEIGHT;
+		}
 	}
-	if (down && LeftY < 440 - 91)
+	if (down && LeftY < MAX_Y - 91)
 	{
 		LeftY += v * dt;
+		if (LeftY > MAX_Y - 91)
+		{
+			LeftY = MAX_Y - 91;
+		}
 	}
 
 	RightY += y;
-	if (RightY < 0)
+	if (RightY < SURFACE_HEIGHT)
 	{
-		RightY = 0;
+		RightY = SURFACE_HEIGHT;
 	}
-	if (RightY > 440 - 91)
+	if (RightY > MAX_Y - 91)
 	{
-		RightY = 440 - 91;
+		RightY = MAX_Y - 91;
 	}
+
+	float time = dt, nx = 1, ny = 1;
+
+	if (run != 0)
+	{
+		float dx = vx * dt;
+		float dy = vy * dt;
+
+		Box ballBox;
+		CreateBox(ballBox, BallX, BallY, 24, 24, dx, dy);
+
+		if (ballBox.t < SURFACE_HEIGHT) // va cham bên trên
+		{
+			float t;
+			SweptAABB(
+				BallX, BallY, BallX + 24, BallY + 24,
+				dx, dy,
+				0, SURFACE_HEIGHT, MAX_X, SURFACE_HEIGHT,
+				t, nx, ny
+			);
+			vy = -vy;
+			if (t < time)
+			{
+				time = t;
+			}
+		}
+		if (ballBox.b > MAX_Y) //chạm bên dưới
+		{
+			float t;
+			SweptAABB(
+				BallX, BallY, BallX + 24, BallY + 24,
+				dx, dy,
+				0, MAX_Y, MAX_X, MAX_Y,
+				t, nx, ny
+			);
+			vy = -vy;
+			if (t < time)
+			{
+				time = t;
+			}
+		}
+		if (ballBox.l < 0) // va chạm trái
+		{
+			float t;
+			SweptAABB(
+				BallX, BallY, BallX + 24, BallY + 24,
+				dx, dy,
+				0, SURFACE_HEIGHT, 0, MAX_X,
+				t, nx, ny
+			);
+			vx = 0.2;
+			run = 0;
+		
+		}
+		if (ballBox.r > MAX_X) // va chạm phải
+		{
+			float t;
+			SweptAABB(
+				BallX, BallY, BallX + 24, BallY + 24,
+				dx, dy,
+				0, SURFACE_HEIGHT, 0, MAX_X,
+				t, nx, ny
+			);
+			vx = -0.2;
+			run = 0;
+			
+		}
+		if (ballBox.l < 16 && ballBox.t >= LeftY && ballBox.b <= LeftY + 91) // Left
+		{
+			float t;
+			SweptAABB(
+				BallX, BallY, BallX + 24, BallY + 24,
+				dx, dy,
+				0, LeftY, 16, LeftY + 91,
+				t, nx, ny
+			);
+			vx = -vx;
+			if (t < time)
+			{
+				time = t;
+			}
+		}
+		if (ballBox.r > MAX_X - 16 && ballBox.t >= RightY && ballBox.b <= RightY + 91) // Right
+		{
+			float t;
+			SweptAABB(
+				BallX, BallY, BallX + 24, BallY + 24,
+				dx, dy,
+				MAX_X - 16, RightY, MAX_X, RightY + 91,
+				t, nx, ny
+			);
+			vx = -vx;
+			if (t < time)
+			{
+				time = t;
+			}
+		}
+	}
+
+
+	BallX += vx * time * run;
+	BallY += vy * time * run;
+
 }
+
 
 void Render()
 {
@@ -209,20 +438,20 @@ void Render()
 
 	if (d3ddv->BeginScene())
 	{
-		// Clear back buffer with a color
+		
 		d3ddv->ColorFill(bb, NULL, BACKGROUND_COLOR);
+		
 
 		spriteHandler->Begin(D3DXSPRITE_ALPHABLEND);
 
 		sLeft->Draw(LeftX, LeftY);
 		sRight->Draw(RightX, RightY);
 		sBall->Draw(BallX, BallY);
-
+		
 		spriteHandler->End();
 		d3ddv->EndScene();
 	}
 
-	// Display back buffer content to the screen
 	d3ddv->Present(NULL, NULL, NULL, NULL);
 }
 
@@ -322,9 +551,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	mouseHandler = new CSampleMouseHander();
 	game->InitInput(keyHandler, mouseHandler);
 
-
 	LoadResources();
 	Run();
-
+	if (surface != NULL)
+	{
+		surface->Release();
+	}
 	return 0;
 }
